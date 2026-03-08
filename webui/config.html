@@ -1,0 +1,205 @@
+<div style="padding: 16px; font-family: system-ui, sans-serif;">
+    <h2 style="margin-top: 0;">YouTube Transcriber Settings</h2>
+
+    <!-- Transcription Settings -->
+    <div style="background: #f5f5f5; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+        <h3 style="margin-top: 0;">Transcription</h3>
+
+        <div style="margin-bottom: 12px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 4px;">Preferred Source</label>
+            <select data-yt="preferred_source" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                <option value="captions">YouTube Captions (fast, no compute)</option>
+                <option value="whisper">Whisper (local model, requires GPU)</option>
+            </select>
+            <small style="color: #888;">Captions uses YouTube's auto-generated or manual subtitles. Whisper runs locally.</small>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 4px;">Whisper Model Size</label>
+            <select data-yt="whisper_model" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                <option value="tiny">Tiny (fastest, least accurate)</option>
+                <option value="base">Base (default)</option>
+                <option value="small">Small</option>
+                <option value="medium">Medium</option>
+                <option value="large">Large (slowest, most accurate)</option>
+            </select>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 4px;">Language</label>
+            <input data-yt="language" type="text" placeholder="auto-detect (leave empty)"
+                style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" />
+            <small style="color: #888;">ISO 639-1 code (e.g., "en", "es", "fr"). Empty = auto-detect.</small>
+        </div>
+    </div>
+
+    <!-- Visual Context Settings -->
+    <div style="background: #f5f5f5; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+        <h3 style="margin-top: 0;">Visual Context Extraction</h3>
+
+        <div style="margin-bottom: 12px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input data-yt="visual_enabled" type="checkbox" checked />
+                <span style="font-weight: bold;">Enable visual context extraction</span>
+            </label>
+            <small style="color: #888;">Detect chart/graph references and extract video frames for analysis.</small>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 4px;">Frame Interval (seconds)</label>
+            <input data-yt="frame_interval" type="number" value="30" min="5" max="300"
+                style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" />
+            <small style="color: #888;">How often to extract frames for periodic visual analysis.</small>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 4px;">Max Frames Per Video</label>
+            <input data-yt="max_frames" type="number" value="20" min="1" max="100"
+                style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" />
+        </div>
+
+        <div style="margin-bottom: 12px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input data-yt="analyze_frames" type="checkbox" checked />
+                <span style="font-weight: bold;">Analyze frames with LLM</span>
+            </label>
+            <small style="color: #888;">Use the AI model to describe visual content in extracted frames.</small>
+        </div>
+    </div>
+
+    <!-- Output Settings -->
+    <div style="background: #f5f5f5; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+        <h3 style="margin-top: 0;">Output</h3>
+
+        <div style="margin-bottom: 12px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input data-yt="save_to_memory" type="checkbox" checked />
+                <span style="font-weight: bold;">Auto-save to memory</span>
+            </label>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input data-yt="include_timestamps" type="checkbox" checked />
+                <span style="font-weight: bold;">Include timestamps in transcripts</span>
+            </label>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 4px;">Export Format</label>
+            <select data-yt="export_format" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                <option value="markdown">Markdown</option>
+                <option value="text">Plain Text</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Playlist Settings -->
+    <div style="background: #f5f5f5; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+        <h3 style="margin-top: 0;">Playlist</h3>
+
+        <div style="margin-bottom: 12px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 4px;">Max Videos Per Playlist</label>
+            <input data-yt="max_videos" type="number" value="10" min="1" max="100"
+                style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" />
+            <small style="color: #888;">Maximum number of videos to process from a playlist. 0 = unlimited.</small>
+        </div>
+    </div>
+
+    <!-- Save Button -->
+    <div style="margin-top: 16px;">
+        <button data-yt="save-btn"
+            onclick="ytSaveSettings()"
+            style="background: #4a90d9; color: white; border: none; padding: 10px 24px;
+                   border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold;">
+            Save YouTube Transcriber Settings
+        </button>
+        <span data-yt="save-status" style="margin-left: 12px; font-size: 14px;"></span>
+        <p style="color: #888; font-size: 12px; margin-top: 8px;">
+            Use this button to save settings (not the outer framework Save button).
+        </p>
+    </div>
+</div>
+
+<script>
+// Load current settings on page load
+(function() {
+    try {
+        const config = window.$store?.pluginSettings?.youtube_transcribe || {};
+        const t = config.transcription || {};
+        const v = config.visual || {};
+        const o = config.output || {};
+        const p = config.playlist || {};
+
+        const el = (attr) => document.querySelector(`[data-yt="${attr}"]`);
+
+        if (t.preferred_source) el('preferred_source').value = t.preferred_source;
+        if (t.whisper_model) el('whisper_model').value = t.whisper_model;
+        if (t.language) el('language').value = t.language;
+
+        el('visual_enabled').checked = v.enabled !== false;
+        if (v.frame_interval) el('frame_interval').value = v.frame_interval;
+        if (v.max_frames) el('max_frames').value = v.max_frames;
+        el('analyze_frames').checked = v.analyze_frames !== false;
+
+        el('save_to_memory').checked = o.save_to_memory !== false;
+        el('include_timestamps').checked = o.include_timestamps !== false;
+        if (o.export_format) el('export_format').value = o.export_format;
+
+        if (p.max_videos !== undefined) el('max_videos').value = p.max_videos;
+    } catch (e) {
+        console.log('Could not load existing settings:', e);
+    }
+})();
+
+async function ytSaveSettings() {
+    const btn = document.querySelector('[data-yt="save-btn"]');
+    const status = document.querySelector('[data-yt="save-status"]');
+    const el = (attr) => document.querySelector(`[data-yt="${attr}"]`);
+
+    btn.disabled = true;
+    status.textContent = 'Saving...';
+    status.style.color = '#999';
+
+    const settings = {
+        transcription: {
+            preferred_source: el('preferred_source').value,
+            whisper_model: el('whisper_model').value,
+            language: el('language').value,
+        },
+        visual: {
+            enabled: el('visual_enabled').checked,
+            frame_interval: parseInt(el('frame_interval').value) || 30,
+            max_frames: parseInt(el('max_frames').value) || 20,
+            analyze_frames: el('analyze_frames').checked,
+        },
+        output: {
+            save_to_memory: el('save_to_memory').checked,
+            include_timestamps: el('include_timestamps').checked,
+            export_format: el('export_format').value,
+        },
+        playlist: {
+            max_videos: parseInt(el('max_videos').value) || 10,
+        },
+    };
+
+    try {
+        // Update the framework store
+        if (window.$store && window.$store.pluginSettings) {
+            window.$store.pluginSettings.youtube_transcribe = settings;
+            // Trigger framework save
+            if (typeof window.$store.savePluginSettings === 'function') {
+                await window.$store.savePluginSettings('youtube_transcribe');
+            }
+        }
+        status.textContent = 'Saved!';
+        status.style.color = '#4caf50';
+    } catch (e) {
+        status.textContent = 'Error: ' + e.message;
+        status.style.color = '#f44336';
+    }
+
+    btn.disabled = false;
+    setTimeout(() => { status.textContent = ''; }, 3000);
+}
+</script>

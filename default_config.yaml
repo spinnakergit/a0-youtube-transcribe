@@ -1,0 +1,38 @@
+# YouTube Transcriber Plugin Configuration
+
+# Transcription settings
+transcription:
+  # Preferred transcript source: "captions" (YouTube auto/manual captions) or "whisper" (local model)
+  preferred_source: "captions"
+  # Whisper model size: tiny, base, small, medium, large
+  whisper_model: "base"
+  # Language hint for transcription (empty = auto-detect)
+  language: ""
+
+# Visual context extraction
+visual:
+  # Extract frames when speaker references charts/visuals
+  enabled: true
+  # Frame extraction interval in seconds (for periodic sampling)
+  frame_interval: 30
+  # Max frames to extract per video
+  max_frames: 20
+  # Analyze frames with LLM for visual context
+  analyze_frames: true
+
+# Output settings
+output:
+  # Auto-save transcripts to memory
+  save_to_memory: true
+  # Export format: "markdown" or "text"
+  export_format: "markdown"
+  # Include timestamps in transcript
+  include_timestamps: true
+
+# Playlist settings
+playlist:
+  # Max videos to process from a playlist (0 = unlimited)
+  max_videos: 10
+
+# Storage
+data_dir: "data"
