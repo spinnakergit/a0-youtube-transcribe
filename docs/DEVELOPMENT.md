@@ -274,7 +274,7 @@ However, accumulated conversation context can still cause overflow. Users should
 
 ### WebUI Config Uses Framework Store
 
-The `webui/config.html` settings panel uses Agent Zero's `$store.pluginSettings` store. This means the outer framework Save button works, but our embedded save button is recommended for reliability.
+The `webui/config.html` settings panel uses Agent Zero's framework settings store. As of March 2026, settings values are exposed on `config` (replacing the old `$store.pluginSettings.settings` pattern) and wrapper/modal variables on `context` (replacing `$store.pluginSettings`). The embedded save button is recommended for reliability.
 
 ---
 

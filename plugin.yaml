@@ -1,3 +1,4 @@
+name: youtube_transcribe
 title: YouTube Transcriber
 description: Transcribe YouTube videos and playlists with visual context extraction, AI-powered summaries, and detailed timestamped notes.
 version: 1.0.0

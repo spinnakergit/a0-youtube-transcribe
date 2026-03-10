@@ -184,13 +184,9 @@ async function ytSaveSettings() {
     };
 
     try {
-        // Update the framework store
-        if (window.$store && window.$store.pluginSettings) {
-            window.$store.pluginSettings.youtube_transcribe = settings;
-            // Trigger framework save
-            if (typeof window.$store.savePluginSettings === 'function') {
-                await window.$store.savePluginSettings('youtube_transcribe');
-            }
+        // Update the framework config (new API: config.<key> replaces $store.pluginSettings.settings.<key>)
+        if (window.config) {
+            Object.assign(window.config, settings);
         }
         status.textContent = 'Saved!';
         status.style.color = '#4caf50';
