@@ -14,7 +14,7 @@ class YouTubeTest(ApiHandler):
 
     @classmethod
     def requires_csrf(cls) -> bool:
-        return False
+        return True
 
     async def process(self, input: dict, request: Request) -> dict | Response:
         checks = {}

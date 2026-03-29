@@ -1,7 +1,7 @@
 import time
 from pathlib import Path
 from helpers.tool import Tool, Response
-from plugins.youtube_transcribe.helpers.youtube_client import (
+from usr.plugins.youtube_transcribe.helpers.youtube_client import (
     parse_youtube_url,
     get_video_info,
     get_transcript,

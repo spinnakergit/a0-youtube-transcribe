@@ -8,14 +8,13 @@
 # For Docker:
 #   docker exec <container> bash -c "cd /tmp && ./install.sh"
 #   Or: docker cp a0-youtube-transcribe/ <container>:/a0/usr/plugins/youtube_transcribe && \
-#       docker exec <container> ln -sf /a0/usr/plugins/youtube_transcribe /a0/plugins/youtube_transcribe
 
-set -e
+set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Auto-detect A0 root: /a0 is the runtime copy, /git/agent-zero is the source
-if [ -n "$1" ]; then
+if [ -n "${1:-}" ]; then
     A0_ROOT="$1"
 elif [ -d "/a0/plugins" ]; then
     A0_ROOT="/a0"
@@ -36,20 +35,24 @@ echo ""
 # Create target directory
 mkdir -p "$PLUGIN_DIR"
 
-# Copy plugin files
-echo "Copying plugin files..."
-cp -r "$SCRIPT_DIR/plugin.yaml" "$PLUGIN_DIR/"
-cp -r "$SCRIPT_DIR/default_config.yaml" "$PLUGIN_DIR/"
-cp -r "$SCRIPT_DIR/initialize.py" "$PLUGIN_DIR/"
-cp -r "$SCRIPT_DIR/helpers" "$PLUGIN_DIR/"
-cp -r "$SCRIPT_DIR/tools" "$PLUGIN_DIR/"
-cp -r "$SCRIPT_DIR/prompts" "$PLUGIN_DIR/"
-cp -r "$SCRIPT_DIR/api" "$PLUGIN_DIR/"
-cp -r "$SCRIPT_DIR/webui" "$PLUGIN_DIR/"
+# Copy plugin files (skip if already installed in-place, e.g. via A0 plugin installer)
+if [ "$(realpath "$SCRIPT_DIR")" != "$(realpath "$PLUGIN_DIR")" ]; then
+    echo "Copying plugin files..."
+    cp -r "$SCRIPT_DIR/plugin.yaml" "$PLUGIN_DIR/"
+    cp -r "$SCRIPT_DIR/default_config.yaml" "$PLUGIN_DIR/"
+    cp -r "$SCRIPT_DIR/initialize.py" "$PLUGIN_DIR/"
+    cp -r "$SCRIPT_DIR/helpers" "$PLUGIN_DIR/"
+    cp -r "$SCRIPT_DIR/tools" "$PLUGIN_DIR/"
+    cp -r "$SCRIPT_DIR/prompts" "$PLUGIN_DIR/"
+    cp -r "$SCRIPT_DIR/api" "$PLUGIN_DIR/"
+    cp -r "$SCRIPT_DIR/webui" "$PLUGIN_DIR/"
 
-# Copy README and LICENSE if present
-[ -f "$SCRIPT_DIR/README.md" ] && cp "$SCRIPT_DIR/README.md" "$PLUGIN_DIR/"
-[ -f "$SCRIPT_DIR/LICENSE" ] && cp "$SCRIPT_DIR/LICENSE" "$PLUGIN_DIR/"
+    # Copy README and LICENSE if present
+    [ -f "$SCRIPT_DIR/README.md" ] && cp "$SCRIPT_DIR/README.md" "$PLUGIN_DIR/"
+    [ -f "$SCRIPT_DIR/LICENSE" ] && cp "$SCRIPT_DIR/LICENSE" "$PLUGIN_DIR/"
+else
+    echo "Files already in place (installed via plugin manager), skipping copy..."
+fi
 
 # Create data directory
 mkdir -p "$PLUGIN_DIR/data"
@@ -76,13 +79,6 @@ python3 "$PLUGIN_DIR/initialize.py" 2>/dev/null || python "$PLUGIN_DIR/initializ
 
 # Enable plugin
 touch "$PLUGIN_DIR/.toggle-1"
-
-# Create symlink so 'from plugins.youtube_transcribe.helpers...' imports work
-SYMLINK="$A0_ROOT/plugins/youtube_transcribe"
-if [ ! -e "$SYMLINK" ]; then
-    ln -sf "$PLUGIN_DIR" "$SYMLINK"
-    echo "Created symlink: $SYMLINK -> $PLUGIN_DIR"
-fi
 
 # If /a0 is a runtime copy of /git/agent-zero, also install there
 if [ "$A0_ROOT" = "/a0" ] && [ -d "/git/agent-zero/usr" ]; then

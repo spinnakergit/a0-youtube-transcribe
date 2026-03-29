@@ -34,5 +34,31 @@ playlist:
   # Max videos to process from a playlist (0 = unlimited)
   max_videos: 10
 
+# Channel transcription settings
+channel:
+  # Size thresholds — determines batching strategy
+  small_threshold: 50       # <= this many videos: transcribe all in one pass
+  large_threshold: 200      # > this many videos: use timed batching with long cooldowns
+
+  # Delay between individual video transcriptions (seconds)
+  delay_per_video: 3        # small channels
+  delay_per_video_medium: 5 # medium channels
+  delay_per_video_large: 8  # large channels
+
+  # Batch sizes
+  batch_size_small: 0       # 0 = no batching (do them all)
+  batch_size_medium: 15     # videos per batch for medium channels
+  batch_size_large: 10      # videos per batch for large channels
+
+  # Cooldown between batches (seconds)
+  batch_cooldown_medium: 60   # 1 minute between batches
+  batch_cooldown_large: 300   # 5 minutes between batches
+
+  # Skip videos without captions (avoids wasting requests on no-caption videos)
+  skip_no_captions: true
+
+  # Save visual frames for channel videos (disabled by default — too heavy at scale)
+  extract_visuals: false
+
 # Storage
 data_dir: "data"

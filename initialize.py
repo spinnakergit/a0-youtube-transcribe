@@ -4,10 +4,13 @@ Installs required Python dependencies.
 Called by the Init button in Agent Zero's Plugin List UI.
 Must define main() returning 0 on success, non-zero on failure."""
 
+import logging
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+logger = logging.getLogger("youtube_transcribe_init")
 
 
 def _find_python():
@@ -30,10 +33,10 @@ def _install(pip_name: str, python: str):
 def _check_ffmpeg():
     """Check if ffmpeg is available (needed for frame extraction)."""
     if shutil.which("ffmpeg"):
-        print("[YouTube Transcriber] ffmpeg found.")
+        logger.info("ffmpeg found.")
         return True
-    print("[YouTube Transcriber] WARNING: ffmpeg not found. Frame extraction will be unavailable.")
-    print("  Install with: apt-get install -y ffmpeg")
+    logger.warning("ffmpeg not found. Frame extraction will be unavailable.")
+    logger.warning("  Install with: apt-get install -y ffmpeg")
     return False
 
 
@@ -53,24 +56,24 @@ def main():
                 capture_output=True,
             )
             if result.returncode == 0:
-                print(f"[YouTube Transcriber] {pip_name} already installed.")
+                logger.info(f"{pip_name} already installed.")
                 continue
         except Exception:
             pass
-        print(f"[YouTube Transcriber] Installing {pip_name}...")
+        logger.info(f"Installing {pip_name}...")
         try:
             _install(pip_name, python)
         except subprocess.CalledProcessError as e:
-            print(f"ERROR: Failed to install {pip_name}: {e}")
+            logger.error(f"Failed to install {pip_name}: {e}")
             failed.append(pip_name)
 
     _check_ffmpeg()
 
     if failed:
-        print(f"[YouTube Transcriber] Failed to install: {', '.join(failed)}")
+        logger.error(f"Failed to install: {', '.join(failed)}")
         return 1
 
-    print("[YouTube Transcriber] All dependencies ready.")
+    logger.info("All dependencies ready.")
     return 0
 
 

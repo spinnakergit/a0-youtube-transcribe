@@ -2,7 +2,7 @@ import os
 import time
 from pathlib import Path
 from helpers.tool import Tool, Response
-from plugins.youtube_transcribe.helpers.youtube_client import (
+from usr.plugins.youtube_transcribe.helpers.youtube_client import (
     parse_youtube_url,
     get_video_info,
     get_playlist_videos,
@@ -36,6 +36,13 @@ class YouTubeTranscribe(Tool):
 
         config = get_yt_config(self.agent)
         parsed = parse_youtube_url(url)
+
+        if parsed["type"] == "channel":
+            return Response(
+                message="This looks like a YouTube channel URL. "
+                        "Use the **youtube_channel** tool to transcribe all videos from a channel.",
+                break_loop=False,
+            )
 
         if parsed["type"] == "unknown":
             return Response(

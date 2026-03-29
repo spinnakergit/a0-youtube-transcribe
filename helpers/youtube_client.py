@@ -62,18 +62,26 @@ _VIDEO_RE = re.compile(
 )
 _PLAYLIST_RE = re.compile(r"[?&]list=([a-zA-Z0-9_-]+)")
 _SHORTS_RE = re.compile(r"youtube\.com/shorts/([a-zA-Z0-9_-]{11})")
+_CHANNEL_RE = re.compile(
+    r"youtube\.com/"
+    r"(?:@([a-zA-Z0-9_.-]+)"            # @handle
+    r"|channel/([a-zA-Z0-9_-]+)"         # /channel/UCxxxx
+    r"|c/([a-zA-Z0-9_.-]+)"             # /c/CustomName
+    r"|user/([a-zA-Z0-9_.-]+))"         # /user/LegacyName
+)
 
 
 def parse_youtube_url(url: str) -> dict:
     """Parse a YouTube URL and return type info.
 
     Returns dict with keys:
-        type: "video" | "playlist" | "unknown"
+        type: "video" | "playlist" | "channel" | "unknown"
         video_id: str or None
         playlist_id: str or None
+        channel_url: str or None
     """
     url = url.strip()
-    result = {"type": "unknown", "video_id": None, "playlist_id": None}
+    result = {"type": "unknown", "video_id": None, "playlist_id": None, "channel_url": None}
 
     # Check for shorts
     shorts_match = _SHORTS_RE.search(url)
@@ -81,6 +89,28 @@ def parse_youtube_url(url: str) -> dict:
         result["type"] = "video"
         result["video_id"] = shorts_match.group(1)
         return result
+
+    # Check for channel BEFORE video (a channel page may contain ?v= in rare embeds)
+    channel_match = _CHANNEL_RE.search(url)
+    if channel_match:
+        # Only treat as channel if there's no video ID in the URL
+        video_match = _VIDEO_RE.search(url)
+        if not video_match:
+            result["type"] = "channel"
+            # Normalise to the canonical URL yt-dlp can resolve
+            handle = channel_match.group(1)  # @handle
+            chan_id = channel_match.group(2)  # /channel/UCxxx
+            custom = channel_match.group(3)  # /c/Name
+            user = channel_match.group(4)    # /user/Name
+            if handle:
+                result["channel_url"] = f"https://www.youtube.com/@{handle}"
+            elif chan_id:
+                result["channel_url"] = f"https://www.youtube.com/channel/{chan_id}"
+            elif custom:
+                result["channel_url"] = f"https://www.youtube.com/c/{custom}"
+            elif user:
+                result["channel_url"] = f"https://www.youtube.com/user/{user}"
+            return result
 
     # Check for video
     video_match = _VIDEO_RE.search(url)
@@ -137,6 +167,106 @@ def get_playlist_videos(playlist_url: str, max_videos: int = 10) -> list[dict]:
                 continue
     if max_videos > 0:
         videos = videos[:max_videos]
+    return videos
+
+
+# ---------------------------------------------------------------------------
+# Channel enumeration
+# ---------------------------------------------------------------------------
+
+def _readable_channel_name(channel_url: str) -> str:
+    """Extract a human-readable name from a channel URL as a fallback.
+
+    '@verifiedinvesting' -> 'verifiedinvesting'
+    '/channel/UCxxx' -> 'UCxxx'
+    '/c/SomeName' -> 'SomeName'
+    """
+    match = _CHANNEL_RE.search(channel_url)
+    if match:
+        return match.group(1) or match.group(2) or match.group(3) or match.group(4) or "Unknown"
+    # Last resort: grab the last path segment
+    stripped = channel_url.rstrip("/")
+    return stripped.rsplit("/", 1)[-1].lstrip("@") or "Unknown"
+
+
+def get_channel_info(channel_url: str) -> dict:
+    """Get channel metadata (name, video count estimate) via yt-dlp.
+
+    Returns dict with keys: channel, channel_id, channel_url, video_count, description.
+    video_count is the number of entries yt-dlp finds on the channel page.
+    """
+    # Append /videos to get the uploads tab directly
+    url = channel_url.rstrip("/")
+    if not url.endswith("/videos"):
+        url += "/videos"
+
+    # First try a non-flat single-video dump to get rich channel metadata
+    meta_cmd = [
+        "yt-dlp", "--dump-json", "--no-download",
+        "--no-warnings", "--quiet",
+        "--playlist-items", "1",
+        url,
+    ]
+    result = subprocess.run(meta_cmd, capture_output=True, text=True, timeout=120)
+
+    fallback_name = _readable_channel_name(channel_url)
+    info = {"channel": fallback_name, "channel_id": "", "channel_url": channel_url,
+            "video_count": 0, "description": ""}
+    if result.returncode == 0 and result.stdout.strip():
+        first_line = result.stdout.strip().split("\n")[0]
+        try:
+            data = json.loads(first_line)
+            info["channel"] = data.get("channel") or data.get("uploader") or fallback_name
+            info["channel_id"] = data.get("channel_id") or ""
+        except json.JSONDecodeError:
+            pass
+
+    # Count total videos with a separate fast pass
+    count_cmd = [
+        "yt-dlp", "--flat-playlist",
+        "--print", "id",
+        "--no-warnings", "--quiet",
+        url,
+    ]
+    count_result = subprocess.run(count_cmd, capture_output=True, text=True, timeout=300)
+    if count_result.returncode == 0:
+        lines = [l for l in count_result.stdout.strip().split("\n") if l.strip()]
+        info["video_count"] = len(lines)
+
+    return info
+
+
+def get_channel_videos(channel_url: str, max_videos: int = 0) -> list[dict]:
+    """Get all video entries for a channel's uploads.
+
+    Returns list of dicts with at least: id, title, url.
+    Set max_videos=0 for unlimited.
+    """
+    url = channel_url.rstrip("/")
+    if not url.endswith("/videos"):
+        url += "/videos"
+
+    cmd = [
+        "yt-dlp", "--dump-json", "--no-download",
+        "--no-warnings", "--quiet",
+        "--flat-playlist",
+    ]
+    if max_videos > 0:
+        cmd += ["--playlist-end", str(max_videos)]
+    cmd.append(url)
+
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    if result.returncode != 0:
+        raise RuntimeError(f"yt-dlp channel enumeration failed: {result.stderr.strip()}")
+
+    videos = []
+    for line in result.stdout.strip().split("\n"):
+        if line.strip():
+            try:
+                info = json.loads(line)
+                videos.append(info)
+            except json.JSONDecodeError:
+                continue
     return videos
 
 
