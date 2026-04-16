@@ -57,15 +57,6 @@ fi
 # Create data directory
 mkdir -p "$PLUGIN_DIR/data"
 
-# Copy skills to usr/skills
-SKILLS_DIR="$A0_ROOT/usr/skills"
-echo "Copying skills..."
-for skill_dir in "$SCRIPT_DIR/skills"/*/; do
-    skill_name="$(basename "$skill_dir")"
-    mkdir -p "$SKILLS_DIR/$skill_name"
-    cp -r "$skill_dir"* "$SKILLS_DIR/$skill_name/"
-done
-
 # Install system dependencies (ffmpeg)
 if ! command -v ffmpeg &>/dev/null; then
     echo "Installing ffmpeg..."
@@ -80,17 +71,9 @@ python3 "$PLUGIN_DIR/initialize.py" 2>/dev/null || python "$PLUGIN_DIR/initializ
 # Enable plugin
 touch "$PLUGIN_DIR/.toggle-1"
 
-# If /a0 is a runtime copy of /git/agent-zero, also install there
-if [ "$A0_ROOT" = "/a0" ] && [ -d "/git/agent-zero/usr" ]; then
-    GIT_PLUGIN="/git/agent-zero/usr/plugins/youtube_transcribe"
-    mkdir -p "$(dirname "$GIT_PLUGIN")"
-    cp -r "$PLUGIN_DIR" "$GIT_PLUGIN" 2>/dev/null || true
-fi
-
 echo ""
 echo "=== Installation complete ==="
 echo "Plugin installed to: $PLUGIN_DIR"
-echo "Skills installed to: $SKILLS_DIR"
 echo ""
 echo "Next steps:"
 echo "  1. Restart Agent Zero to load the plugin"
