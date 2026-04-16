@@ -27,7 +27,12 @@ import plugins
 # ---------------------------------------------------------------------------
 
 def get_yt_config(agent=None):
-    """Load plugin config with defaults."""
+    """Load plugin config with defaults.
+
+    Returns a plain config dict. For project-aware data routing, pass
+    the same `agent` to helper functions that touch the filesystem
+    (via _data_dir).
+    """
     try:
         config = plugins.get_plugin_config("youtube_transcribe", agent=agent) or {}
     except Exception:
@@ -35,8 +40,33 @@ def get_yt_config(agent=None):
     return config
 
 
-def _data_dir(config: dict) -> Path:
-    """Resolve the data directory for storing transcripts and frames."""
+def _data_dir(config: dict, agent=None) -> Path:
+    """Resolve the data directory for storing transcripts and frames.
+
+    Project isolation is opt-in via the `project_data_isolation` config
+    flag (default: True), matching the `_memory` plugin's behaviour.
+    Falls back to the existing candidate-list search for the shared
+    global dir when no agent/project is available.
+    """
+    # 1. Try project-scoped path (opt-in, default True)
+    try:
+        from helpers import plugins as _plugins, projects
+        if (
+            agent is not None
+            and getattr(agent, "context", None) is not None
+            and config.get("project_data_isolation", True)
+        ):
+            project_name = projects.get_context_project_name(agent.context) or ""
+            if project_name:
+                p = Path(_plugins.determine_plugin_asset_path(
+                    "youtube_transcribe", project_name, "", "data"
+                ))
+                p.mkdir(parents=True, exist_ok=True)
+                return p
+    except Exception:
+        pass
+
+    # 2. Fall back to original candidate-list behavior
     rel = config.get("data_dir", "data")
     candidates = [
         Path(__file__).parent.parent / rel,

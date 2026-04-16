@@ -170,7 +170,7 @@ class YouTubeNotes(Tool):
         full_output = "\n".join(output_parts)
 
         # Save to file
-        data_dir = _data_dir(config)
+        data_dir = _data_dir(config, agent=self.agent)
         safe_title = "".join(c if c.isalnum() or c in " -_" else "" for c in title)[:80].strip()
         file_name = f"notes_{video_id}_{safe_title}.md" if video_id else f"notes_{safe_title}.md"
         file_path = data_dir / file_name
@@ -226,7 +226,7 @@ class YouTubeNotes(Tool):
         output = f"# Detailed Notes: {title}\n\n{video_info}\n\n---\n\n{notes}"
 
         # Save to file
-        data_dir = _data_dir(config)
+        data_dir = _data_dir(config, agent=self.agent)
         safe_title = "".join(c if c.isalnum() or c in " -_" else "" for c in title)[:80].strip()
         file_name = f"notes_{video_id}_{safe_title}.md" if video_id else f"notes_{safe_title}.md"
         file_path = data_dir / file_name
@@ -252,7 +252,7 @@ class YouTubeNotes(Tool):
 async def _save_to_memory(agent, text: str):
     """Save notes to A0 memory."""
     try:
-        from plugins.memory.helpers.memory import Memory
+        from usr.plugins.memory.helpers.memory import Memory
         db = await Memory.get(agent)
         metadata = {"area": "main", "source": "youtube_notes"}
         await db.insert_text(text, metadata)

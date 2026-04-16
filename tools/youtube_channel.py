@@ -247,7 +247,7 @@ class YouTubeChannel(Tool):
             )
 
         # Step 3: Load or create state
-        data_dir = _data_dir(config)
+        data_dir = _data_dir(config, agent=self.agent)
         state = ChannelState.load_or_create(
             data_dir, channel_id, channel_url, channel_name, video_list, strategy,
         )
@@ -419,7 +419,7 @@ class YouTubeChannel(Tool):
     # ------------------------------------------------------------------
 
     def _report_status(self, config: dict, channel_url: str) -> Response:
-        data_dir = _data_dir(config)
+        data_dir = _data_dir(config, agent=self.agent)
 
         # Find matching state file
         state_files = list(data_dir.glob("channel_*_state.json"))
@@ -468,7 +468,7 @@ class YouTubeChannel(Tool):
     # ------------------------------------------------------------------
 
     async def _retry_failed(self, config: dict, channel_url: str) -> Response:
-        data_dir = _data_dir(config)
+        data_dir = _data_dir(config, agent=self.agent)
         language = self.args.get("language", config.get("transcription", {}).get("language", ""))
         include_timestamps = config.get("output", {}).get("include_timestamps", True)
         save_to_memory = self.args.get("save_to_memory", "true").lower() == "true"
@@ -570,7 +570,7 @@ def _slug(text: str) -> str:
 async def _save_to_memory(agent, text: str):
     """Save transcript to A0 memory (vector DB with markdown fallback)."""
     try:
-        from plugins.memory.helpers.memory import Memory
+        from usr.plugins.memory.helpers.memory import Memory
         db = await Memory.get(agent)
         metadata = {"area": "main", "source": "youtube_channel"}
         await db.insert_text(text, metadata)

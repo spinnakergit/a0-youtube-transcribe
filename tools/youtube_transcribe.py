@@ -99,7 +99,7 @@ class YouTubeTranscribe(Tool):
             visual_refs = detect_visual_references(segments)
 
             if visual_refs:
-                data_dir = _data_dir(config)
+                data_dir = _data_dir(config, agent=self.agent)
                 frames_dir = str(data_dir / f"frames_{video_id}")
 
                 # Extract frames at visual reference timestamps
@@ -125,7 +125,7 @@ class YouTubeTranscribe(Tool):
                 analyze = vis_config.get("analyze_frames", True)
 
                 if analyze and info.get("duration", 0) > 0:
-                    data_dir = _data_dir(config)
+                    data_dir = _data_dir(config, agent=self.agent)
                     frames_dir = str(data_dir / f"frames_{video_id}")
                     self.set_progress("Extracting periodic frames for context...")
                     frames = extract_frames(url, frames_dir, interval, max_frames)
@@ -147,7 +147,7 @@ class YouTubeTranscribe(Tool):
         full_output = "\n".join(output_parts)
 
         # Step 5: Save full transcript to file (always — keeps it out of context window)
-        data_dir = _data_dir(config)
+        data_dir = _data_dir(config, agent=self.agent)
         safe_title = "".join(c if c.isalnum() or c in " -_" else "" for c in title)[:80].strip()
         file_name = f"transcript_{video_id}_{safe_title}.md"
         file_path = data_dir / file_name
@@ -195,7 +195,7 @@ class YouTubeTranscribe(Tool):
         if not videos:
             return Response(message="No videos found in the playlist.", break_loop=False)
 
-        data_dir = _data_dir(config)
+        data_dir = _data_dir(config, agent=self.agent)
         save_to_memory = self.args.get("save_to_memory", "true").lower() == "true"
         language = self.args.get("language", config.get("transcription", {}).get("language", ""))
         include_timestamps = config.get("output", {}).get("include_timestamps", True)
@@ -321,7 +321,7 @@ class YouTubeTranscribe(Tool):
 async def _save_to_memory(agent, text: str):
     """Save transcript to A0 memory (vector DB with markdown fallback)."""
     try:
-        from plugins.memory.helpers.memory import Memory
+        from usr.plugins.memory.helpers.memory import Memory
         db = await Memory.get(agent)
         metadata = {"area": "main", "source": "youtube_transcribe"}
         await db.insert_text(text, metadata)
