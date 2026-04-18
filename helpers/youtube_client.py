@@ -34,7 +34,15 @@ def get_yt_config(agent=None):
     (via _data_dir).
     """
     try:
-        config = plugins.get_plugin_config("youtube_transcribe", agent=agent) or {}
+        config = plugins.get_plugin_config(
+            "youtube_transcribe", agent=agent, agent_profile=""
+        ) or {}
+    except TypeError:
+        # Older A0 builds that don't accept agent_profile kwarg
+        try:
+            config = plugins.get_plugin_config("youtube_transcribe", agent=agent) or {}
+        except Exception:
+            config = {}
     except Exception:
         config = {}
     return config
@@ -307,18 +315,49 @@ def get_channel_videos(channel_url: str, max_videos: int = 0) -> list[dict]:
 def get_transcript_captions(video_id: str, language: str = "") -> Optional[list[dict]]:
     """Try to get transcript from YouTube captions via youtube-transcript-api.
 
-    Returns list of dicts: [{"text": "...", "start": 0.0, "duration": 2.5}, ...]
-    Returns None if unavailable.
+    Supports both youtube-transcript-api 1.x (instance .fetch) and 0.x
+    (classmethod .get_transcript). Returns list of dicts:
+    [{"text": "...", "start": 0.0, "duration": 2.5}, ...] or None.
     """
     try:
         from youtube_transcript_api import YouTubeTranscriptApi
-        if language:
-            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=[language])
-        else:
-            transcript = YouTubeTranscriptApi.get_transcript(video_id)
-        return transcript
     except Exception:
         return None
+
+    languages = [language] if language else ["en"]
+
+    # 1.x path: instance method .fetch() returns FetchedTranscript with snippets
+    fetch = getattr(YouTubeTranscriptApi, "fetch", None)
+    if callable(fetch):
+        try:
+            api = YouTubeTranscriptApi()
+            fetched = api.fetch(video_id, languages=languages)
+            # FetchedTranscript is iterable of FetchedTranscriptSnippet objects
+            # with .text, .start, .duration attributes. Fall back to dict() if
+            # the library returns legacy shape.
+            out: list[dict] = []
+            for snip in fetched:
+                if hasattr(snip, "text") and hasattr(snip, "start"):
+                    out.append({
+                        "text": snip.text,
+                        "start": float(snip.start),
+                        "duration": float(getattr(snip, "duration", 0.0) or 0.0),
+                    })
+                elif isinstance(snip, dict):
+                    out.append(snip)
+            return out or None
+        except Exception:
+            pass  # fall through to legacy path
+
+    # 0.x path: classmethod .get_transcript()
+    get_transcript = getattr(YouTubeTranscriptApi, "get_transcript", None)
+    if callable(get_transcript):
+        try:
+            return get_transcript(video_id, languages=languages)
+        except Exception:
+            return None
+
+    return None
 
 
 def get_transcript_ytdlp(video_url: str, language: str = "") -> Optional[list[dict]]:
@@ -329,12 +368,13 @@ def get_transcript_ytdlp(video_url: str, language: str = "") -> Optional[list[di
     """
     with tempfile.TemporaryDirectory() as tmpdir:
         sub_file = os.path.join(tmpdir, "subs")
+        ytdlp_bin = shutil.which("yt-dlp") or "yt-dlp"
         cmd = [
-            "yt-dlp",
+            ytdlp_bin,
             "--write-auto-subs", "--write-subs",
             "--sub-format", "json3",
             "--skip-download",
-            "--no-warnings", "--quiet",
+            "--no-warnings",
             "-o", sub_file,
         ]
         if language:
@@ -343,13 +383,27 @@ def get_transcript_ytdlp(video_url: str, language: str = "") -> Optional[list[di
             cmd += ["--sub-langs", "en.*,en"]
         cmd.append(video_url)
 
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        except FileNotFoundError:
+            import logging
+            logging.getLogger("youtube_transcribe").warning(
+                "yt-dlp binary not found on PATH; subtitle fallback unavailable"
+            )
+            return None
 
         # Find the subtitle file
         sub_files = list(Path(tmpdir).glob("*.json3"))
         if not sub_files:
             sub_files = list(Path(tmpdir).glob("*.json"))
         if not sub_files:
+            import logging
+            log = logging.getLogger("youtube_transcribe")
+            log.warning(
+                "yt-dlp returned no subtitle file (rc=%s). stderr=%s",
+                result.returncode,
+                (result.stderr or "").strip()[:500],
+            )
             return None
 
         with open(sub_files[0], "r") as f:

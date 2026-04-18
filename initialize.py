@@ -43,9 +43,13 @@ def _check_ffmpeg():
 def main():
     python = _find_python()
     # Map of import name -> pip package name
+    # youtube-transcript-api 1.0.0 (2025-02) replaced the static
+    # YouTubeTranscriptApi.get_transcript() method with an instance .fetch().
+    # The plugin supports both shapes, but the floor guarantees that any
+    # fresh install ships with the documented 1.x surface.
     deps = {
         "yt_dlp": "yt-dlp",
-        "youtube_transcript_api": "youtube-transcript-api",
+        "youtube_transcript_api": "youtube-transcript-api>=1.0.0",
         "PIL": "Pillow",
     }
     failed = []
