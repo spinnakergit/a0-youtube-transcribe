@@ -1,6 +1,6 @@
 name: youtube_transcribe
 title: YouTube Transcriber
-description: Transcribe YouTube videos and playlists with visual context extraction, AI-powered summaries, and detailed timestamped notes.
+description: Transcribe YouTube videos, playlists, and entire channels with adaptive rate-limiting to avoid YouTube throttling. AI-powered summaries, timestamped notes, visual context extraction, and resumable channel jobs.
 version: 1.0.0
 settings_sections:
   - external

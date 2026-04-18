@@ -1,10 +1,12 @@
 # YouTube Transcriber Plugin for Agent Zero
 
-A YouTube transcription plugin for Agent Zero that extracts audio to text, detects visual references (charts, graphs, slides), and generates AI-powered summaries and detailed timestamped notes.
+A YouTube transcription plugin for Agent Zero that extracts audio to text, detects visual references (charts, graphs, slides), and generates AI-powered summaries and detailed timestamped notes. Supports single videos, playlists, and entire channels with adaptive rate-limiting to stay under YouTube's throttling thresholds.
 
 ## Features
 
-- **Transcribe** single videos or entire playlists to text
+- **Transcribe** single videos, entire playlists, or **entire channels** to text
+- **Adaptive rate-limiting** for channel jobs — classifies channels as small/medium/large and applies per-video delays + inter-batch cooldowns so YouTube doesn't flag the traffic
+- **Resumable channel jobs** — progress is persisted to a state file; re-run the tool to pick up where it left off, or use `action=retry` to re-attempt failed videos
 - **Visual context extraction** -- detects when speakers reference charts, graphs, or slides and extracts/analyzes video frames
 - **AI-powered summaries** with main topics, key points, data/evidence, and conclusions
 - **Detailed timestamped notes** broken into sections with visual content annotations
@@ -68,6 +70,9 @@ Open Agent Zero's chat and try:
 | Summarize a video | "Summarize this YouTube video: https://youtube.com/watch?v=..." |
 | Detailed study notes | "Create detailed notes from this video: https://youtube.com/watch?v=..." |
 | Transcribe a playlist | "Transcribe this playlist: https://youtube.com/playlist?list=..." |
+| Transcribe a channel | "Transcribe this YouTube channel: https://youtube.com/@ChannelName" |
+| Check channel progress | "What's the status of the YouTube channel transcription job for @ChannelName?" |
+| Retry failed channel videos | "Retry the failed videos from the @ChannelName channel job" |
 | Transcribe with visuals | "Transcribe this video with visual analysis: https://youtube.com/watch?v=..." |
 
 ## Tools
@@ -75,6 +80,7 @@ Open Agent Zero's chat and try:
 | Tool | Description |
 |------|-------------|
 | `youtube_transcribe` | Transcribe a video or playlist with optional visual context extraction |
+| `youtube_channel` | Transcribe all videos from a YouTube channel with adaptive rate-limiting and resumable state |
 | `youtube_summary` | Generate an AI-powered structured summary from a video transcript |
 | `youtube_notes` | Generate detailed, timestamped study notes broken into sections |
 
@@ -89,6 +95,22 @@ Extracts text from YouTube captions (or auto-generated subtitles), detects refer
 - `language` -- Language hint (e.g., `en`, `es`)
 - `save_to_memory` -- `true`/`false` (default: `true`)
 - `max_videos` -- Max videos from a playlist (default: 10)
+
+### youtube_channel
+
+Transcribes every video on a YouTube channel with a batching strategy that adapts to channel size so YouTube's throttling thresholds don't trip. Progress is persisted to a state file, so repeated invocations resume where the last run left off; failed videos (e.g., captions disabled) are tracked separately and re-attemptable.
+
+**Sizing strategy:**
+- **Small channels** (≤ 50 videos): transcribe all in one pass with a short per-video delay
+- **Medium channels** (51-200 videos): batch into groups of 15 with a cooldown between batches
+- **Large channels** (> 200 videos): smaller batches of 10 with longer per-video delays and multi-minute cooldowns
+
+**Arguments:**
+- `url` (required) -- Channel URL (`@handle`, `/channel/UCxxx`, `/c/Name`, or `/user/Name`)
+- `action` -- `transcribe` (default), `status` (check progress), or `retry` (re-attempt failed videos)
+- `language` -- Language hint (e.g., `en`, `es`)
+- `save_to_memory` -- `true`/`false` (default: `true`)
+- `max_videos` -- Limit how many videos to process in this run (useful for testing or pacing large channels)
 
 ### youtube_summary
 
@@ -123,6 +145,13 @@ Creates detailed study notes organized by time sections. Each section includes k
 3. Sends frames to the LLM for detailed visual analysis
 4. If no explicit references found, periodic frame sampling provides general context
 
+### Channel Pipeline
+1. Resolves the channel URL (`@handle`, `/channel/UCxxx`, `/c/Name`, `/user/Name`) and enumerates video IDs via yt-dlp
+2. Classifies the channel as small / medium / large and picks a per-video delay + batch size + inter-batch cooldown
+3. Persists progress to a per-channel state file so repeated invocations resume automatically
+4. Tracks failed videos (e.g., captions disabled) separately — re-attemptable with `action=retry`
+5. `action=status` returns completion stats without doing any more work
+
 ### Output Storage
 - **Markdown files** -- Full transcripts, summaries, and notes saved to the plugin's `data/` directory
 - **Agent Zero memory** -- Content indexed in the vector database for future retrieval
@@ -153,6 +182,17 @@ Settings can be adjusted via the WebUI config page or `default_config.yaml`:
 | Output | `save_to_memory` | `true` | Auto-save to Agent Zero memory |
 | Output | `include_timestamps` | `true` | Include timestamps in transcripts |
 | Playlist | `max_videos` | `10` | Max videos per playlist |
+| Channel | `small_threshold` | `50` | Videos ≤ this → one-pass small-channel strategy |
+| Channel | `large_threshold` | `200` | Videos > this → large-channel strategy with long cooldowns |
+| Channel | `delay_per_video` | `3` | Per-video delay (s) for small channels |
+| Channel | `delay_per_video_medium` | `5` | Per-video delay (s) for medium channels |
+| Channel | `delay_per_video_large` | `8` | Per-video delay (s) for large channels |
+| Channel | `batch_size_medium` | `15` | Videos per batch for medium channels |
+| Channel | `batch_size_large` | `10` | Videos per batch for large channels |
+| Channel | `batch_cooldown_medium` | `60` | Cooldown (s) between batches for medium channels |
+| Channel | `batch_cooldown_large` | `300` | Cooldown (s) between batches for large channels |
+| Channel | `skip_no_captions` | `true` | Skip videos without captions to avoid wasted requests |
+| Channel | `extract_visuals` | `false` | Extract video frames on channel runs (heavy at scale) |
 
 ## Requirements
 
@@ -173,6 +213,7 @@ usr/plugins/youtube_transcribe/
 │   └── youtube_client.py    # URL parsing, metadata, transcripts, frames
 ├── tools/
 │   ├── youtube_transcribe.py  # Transcription + visual context
+│   ├── youtube_channel.py     # Channel transcription + adaptive rate-limiting + resumable state
 │   ├── youtube_summary.py     # AI summary generation
 │   └── youtube_notes.py       # Timestamped study notes
 ├── prompts/                 # LLM tool descriptions
